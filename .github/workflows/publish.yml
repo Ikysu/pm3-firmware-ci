@@ -39,9 +39,9 @@ jobs:
             cp "dist/firmware-${variant}/bootrom.bin"     "release/bootrom-${variant}.bin"
             cp "dist/firmware-${variant}/fullimage.elf" "release/fullimage-${variant}.elf"
             cp "dist/firmware-${variant}/bootrom.elf"     "release/bootrom-${variant}.elf"
-            cp "dist/firmware-${variant}/${variant}.meta" "release/${variant}.meta"
+            cp "dist/firmware-${variant}/build.meta"     "release/${variant}.meta"
           done
-          cat dist/firmware-*/*.meta > release/BUILD_INFO.txt
+          cat release/*.meta > release/BUILD_INFO.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

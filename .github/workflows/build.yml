@@ -51,23 +51,24 @@ jobs:
           arm-none-eabi-objcopy -O binary bootrom/obj/bootrom.elf bootrom.bin
           arm-none-eabi-objcopy -O binary armsrc/obj/fullimage.elf fullimage.bin
 
-      - name: Collect version info
-        working-directory: vendor/proxmark3
+      - name: Stage artifacts into a flat directory
         run: |
+          mkdir -p stage
+          cp vendor/proxmark3/bootrom.elf                  stage/bootrom.elf
+          cp vendor/proxmark3/bootrom.bin                  stage/bootrom.bin
+          cp vendor/proxmark3/armsrc/obj/fullimage.elf    stage/fullimage.elf
+          cp vendor/proxmark3/fullimage.bin                stage/fullimage.bin
           {
             echo "variant=${{ matrix.variant }}"
-            echo "commit=$(git rev-parse --short HEAD)"
+            echo "commit=$(git -C vendor/proxmark3 rev-parse --short HEAD)"
             echo "built_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          } > ../${{ matrix.variant }}.meta
+          } > stage/build.meta
+          echo "----- staged files -----"
+          ls -la stage
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.variant }}
-          path: |
-            vendor/proxmark3/bootrom.elf
-            vendor/proxmark3/bootrom.bin
-            vendor/proxmark3/armsrc/obj/fullimage.elf
-            vendor/proxmark3/fullimage.bin
-            ${{ matrix.variant }}.meta
+          path: stage/*
           retention-days: 30
