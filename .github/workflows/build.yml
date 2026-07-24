@@ -54,7 +54,7 @@ jobs:
       - name: Stage artifacts into a flat directory
         run: |
           mkdir -p stage
-          cp vendor/proxmark3/bootrom.elf                  stage/bootrom.elf
+          cp vendor/proxmark3/bootrom/obj/bootrom.elf     stage/bootrom.elf
           cp vendor/proxmark3/bootrom.bin                  stage/bootrom.bin
           cp vendor/proxmark3/armsrc/obj/fullimage.elf    stage/fullimage.elf
           cp vendor/proxmark3/fullimage.bin                stage/fullimage.bin
