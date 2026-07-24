@@ -1,0 +1,58 @@
+name: Publish
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+
+concurrency:
+  group: pm3-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate release name
+        id: meta
+        run: |
+          NAME="iceman-$(date -u +%Y%m%d%H%M)"
+          echo "release_name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifacts from the triggering Build run
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: dist
+
+      - name: Flatten artifacts for release assets
+        run: |
+          mkdir -p release
+          for variant in pm3easy512 pm3easy256; do
+            cp "dist/firmware-${variant}/fullimage.bin" "release/fullimage-${variant}.bin"
+            cp "dist/firmware-${variant}/bootrom.bin"     "release/bootrom-${variant}.bin"
+            cp "dist/firmware-${variant}/fullimage.elf" "release/fullimage-${variant}.elf"
+            cp "dist/firmware-${variant}/bootrom.elf"     "release/bootrom-${variant}.elf"
+            cp "dist/firmware-${variant}/${variant}.meta" "release/${variant}.meta"
+          done
+          cat dist/firmware-*/*.meta > release/BUILD_INFO.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.release_name }}
+          name: ${{ steps.meta.outputs.release_name }}
+          body: |
+            Автоматическая сборка прошивки Iceman (RfidResearchGroup/proxmark3).
+            Собрано из коммита submodule, см. BUILD_INFO.txt в ассетах релиза.
+          files: |
+            release/*.bin
+            release/*.elf
+            release/BUILD_INFO.txt
+          token: ${{ secrets.GITHUB_TOKEN }}

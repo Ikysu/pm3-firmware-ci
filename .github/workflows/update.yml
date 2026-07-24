@@ -1,0 +1,56 @@
+name: Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Ветка/тег proxmark3, на который обновить submodule"
+        required: false
+        default: "master"
+
+concurrency:
+  group: pm3-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update-submodule:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wrapper repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch latest upstream ref for submodule
+        working-directory: vendor/proxmark3
+        run: |
+          git fetch origin ${{ inputs.ref }}
+          git checkout ${{ inputs.ref }}
+          git pull origin ${{ inputs.ref }} --ff-only || true
+          echo "NEW_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: Check if anything actually changed
+        id: diff
+        run: |
+          if git diff --quiet --exit-code -- vendor/proxmark3; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push updated submodule pointer
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "pm3-firmware-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add vendor/proxmark3
+          git commit -m "chore: update proxmark3 submodule to ${{ inputs.ref }} (${{ env.NEW_SHA }})"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Nothing to update
+        if: steps.diff.outputs.changed == 'false'
+        run: echo "Submodule уже указывает на актуальный коммит — коммит не создавался."
